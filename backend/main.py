@@ -41,6 +41,8 @@ class RegionRequest(BaseModel):
 class GridRequest(BaseModel):
     # List of polygons, where each polygon is a list of [longitude, latitude]
     polygons: List[List[Tuple[float, float]]]
+    start_date: str = None
+    end_date: str = None
 
 @app.post("/api/analyze-grid")
 async def analyze_grid(request: GridRequest):
@@ -224,6 +226,73 @@ async def analyze_region(request: RegionRequest):
             "ndwi": random.uniform(-0.1, 0.25),
             "message": f"GEE processing failed: {str(e)}. Returning mock data."
         }
+
+@app.post("/api/timeseries")
+async def analyze_timeseries(request: GridRequest):
+    if not request.polygons or len(request.polygons) == 0:
+        raise HTTPException(status_code=400, detail="No polygon provided.")
+        
+    logger.info("Received request for timeseries data.")
+    
+    if not EE_INITIALIZED:
+        logger.info("Returning mocked timeseries data.")
+        time.sleep(1.0)
+        import datetime
+        results = [{"date": (datetime.datetime.now() - datetime.timedelta(days=i*15)).strftime('%Y-%m-%d'), "ndvi": random.uniform(0.3, 0.8)} for i in range(12)]
+        return {"status": "success", "mocked": True, "timeseries": results[::-1]}
+
+    try:
+        coords = request.polygons[0].copy()
+        if coords[0] != coords[-1]:
+            coords.append(coords[0])
+        roi = ee.Geometry.Polygon([coords])
+        
+        # Date logic
+        if request.end_date:
+            end_date = ee.Date(request.end_date)
+        else:
+            end_date = ee.Date(time.time() * 1000)
+            
+        if request.start_date:
+            start_date = ee.Date(request.start_date)
+        else:
+            start_date = end_date.advance(-6, 'month')
+        
+        s2 = ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED') \
+            .filterBounds(roi) \
+            .filterDate(start_date, end_date) \
+            .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 30))
+            
+        def get_ndvi(image):
+            date = image.date().format('YYYY-MM-dd')
+            ndvi = image.normalizedDifference(['B8', 'B4'])
+            mean_ndvi = ndvi.reduceRegion(
+                reducer=ee.Reducer.mean(),
+                geometry=roi,
+                scale=10,
+                maxPixels=1e9
+            ).get('nd')
+            return ee.Feature(None, {'date': date, 'ndvi': mean_ndvi})
+            
+        time_series = s2.map(get_ndvi)
+        ts_info = time_series.getInfo()
+        
+        results = []
+        for feature in ts_info['features']:
+            props = feature['properties']
+            if props.get('ndvi') is not None:
+                results.append({
+                    "date": props.get('date'),
+                    "ndvi": props.get('ndvi')
+                })
+                
+        return {"status": "success", "mocked": False, "timeseries": results}
+        
+    except Exception as e:
+        logger.error(f"Error during GEE timeseries processing: {str(e)}")
+        import datetime
+        results = [{"date": (datetime.datetime.now() - datetime.timedelta(days=i*15)).strftime('%Y-%m-%d'), "ndvi": random.uniform(0.3, 0.8)} for i in range(12)]
+        return {"status": "error", "mocked": True, "timeseries": results[::-1], "message": str(e)}
 
 if __name__ == "__main__":
     import uvicorn

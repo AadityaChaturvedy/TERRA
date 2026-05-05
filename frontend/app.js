@@ -141,8 +141,22 @@ async function generateAndAnalyzeGrid() {
     
     const intersectingSquares = [];
     turf.featureEach(grid, function (currentFeature) {
-        if (turf.booleanIntersects(turfPolygon, currentFeature)) {
-            intersectingSquares.push(currentFeature);
+        // Use intersect to get the exact clipped shape
+        const intersection = turf.intersect(turfPolygon, currentFeature);
+        if (intersection) {
+            if (intersection.geometry.type === 'Polygon') {
+                intersectingSquares.push({type: 'Feature', geometry: intersection.geometry});
+            } else if (intersection.geometry.type === 'MultiPolygon') {
+                // A single square might be cut into multiple disconnected polygons at sharp edges.
+                // We must process each piece individually so no area is lost!
+                intersection.geometry.coordinates.forEach(polyCoords => {
+                    intersectingSquares.push({
+                        type: 'Feature', 
+                        geometry: { type: 'Polygon', coordinates: polyCoords }
+                    });
+                });
+            }
+            // Ignore Points or LineStrings (touching perfectly on the edge with no area)
         }
     });
 
@@ -157,14 +171,16 @@ async function generateAndAnalyzeGrid() {
 
     // Draw initial gray grid
     intersectingSquares.forEach((square, index) => {
-        const leafletCoords = square.geometry.coordinates[0].map(c => [c[1], c[0]]);
+        const coordsList = square.geometry.coordinates[0];
+            
+        const leafletCoords = coordsList.map(c => [c[1], c[0]]);
         const gridLayer = L.polygon(leafletCoords, {
             color: '#ffffff', weight: 1, opacity: 0.5,
             fillColor: '#9ca3af', fillOpacity: 0.4, className: 'grid-square'
         }).addTo(map);
         
         gridLayer.gridId = index;
-        gridLayer.geoJsonCoords = square.geometry.coordinates[0];
+        gridLayer.geoJsonCoords = coordsList;
         gridLayers.push(gridLayer);
     });
 
@@ -335,6 +351,98 @@ async function selectAndAnalyzeSquare(layer) {
 
     loadingState.classList.add('hidden');
     dataState.classList.remove('hidden');
+
+    const dateFromInput = document.getElementById('date-from');
+    const dateToInput = document.getElementById('date-to');
+    
+    // Set default dates if empty (6 months ago to today)
+    if (!dateToInput.value) {
+        const today = new Date();
+        dateToInput.value = today.toISOString().split('T')[0];
+    }
+    if (!dateFromInput.value) {
+        const sixMonthsAgo = new Date();
+        sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+        dateFromInput.value = sixMonthsAgo.toISOString().split('T')[0];
+    }
+
+    // Fetch and render timeseries chart
+    fetchAndRenderChart(coords, dateFromInput.value, dateToInput.value);
+    
+    // Setup update button
+    const updateBtn = document.getElementById('update-chart-btn');
+    // Remove old listeners by cloning
+    const newBtn = updateBtn.cloneNode(true);
+    updateBtn.parentNode.replaceChild(newBtn, updateBtn);
+    
+    newBtn.addEventListener('click', async () => {
+        newBtn.disabled = true;
+        const originalText = newBtn.textContent;
+        newBtn.textContent = 'Loading...';
+        
+        await fetchAndRenderChart(coords, document.getElementById('date-from').value, document.getElementById('date-to').value);
+        
+        newBtn.textContent = originalText;
+        newBtn.disabled = false;
+    });
+}
+
+let chartInstance = null;
+
+async function fetchAndRenderChart(coords, startDate, endDate) {
+    const chartContainer = document.getElementById('chart-container');
+    chartContainer.classList.remove('hidden');
+    
+    // Show loading text in canvas space
+    const ctx = document.getElementById('historyChart').getContext('2d');
+    
+    try {
+        const response = await fetch('http://127.0.0.1:8000/api/timeseries', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ polygons: [coords], start_date: startDate, end_date: endDate })
+        });
+        
+        if (!response.ok) throw new Error("Failed to fetch timeseries");
+        const data = await response.json();
+        
+        const labels = data.timeseries.map(item => item.date);
+        const values = data.timeseries.map(item => item.ndvi);
+        
+        if (chartInstance) {
+            chartInstance.destroy();
+        }
+        
+        chartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: `NDVI (${startDate} to ${endDate})`,
+                    data: values,
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { labels: { color: '#f8fafc' } }
+                },
+                scales: {
+                    x: { ticks: { color: '#9ca3af', maxTicksLimit: 6 }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                    y: { ticks: { color: '#9ca3af' }, grid: { color: 'rgba(255,255,255,0.05)' }, min: 0, max: 1 }
+                }
+            }
+        });
+        
+    } catch (e) {
+        console.error("Timeseries error:", e);
+    }
 }
 
 function updateTrend(metric, value) {

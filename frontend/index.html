@@ -16,6 +16,9 @@
     <!-- Turf.js -->
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
     
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
     <!-- Custom CSS -->
     <link rel="stylesheet" href="style.css">
 </head>
@@ -76,8 +79,23 @@
                     </div>
                     
                     <div class="coordinates-info">
-                        <h4>Tile Coordinates</h4>
+                        <h4>Selected Region Coordinates</h4>
                         <pre id="coords-display">No coordinates selected</pre>
+                    </div>
+                </div>
+                
+                <div id="chart-container" class="hidden" style="margin-top: 16px;">
+                    <canvas id="historyChart" width="100" height="60"></canvas>
+                    <div id="chart-controls" style="margin-top: 12px; display: flex; gap: 8px; align-items: flex-end;">
+                        <div style="flex: 1;">
+                            <label style="font-size: 10px; color: var(--text-muted);">From:</label>
+                            <input type="date" id="date-from" style="width: 100%; background: rgba(0,0,0,0.2); border: 1px solid var(--panel-border); color: #fff; padding: 6px; border-radius: 4px; font-size: 11px; outline: none;">
+                        </div>
+                        <div style="flex: 1;">
+                            <label style="font-size: 10px; color: var(--text-muted);">To:</label>
+                            <input type="date" id="date-to" style="width: 100%; background: rgba(0,0,0,0.2); border: 1px solid var(--panel-border); color: #fff; padding: 6px; border-radius: 4px; font-size: 11px; outline: none;">
+                        </div>
+                        <button id="update-chart-btn" class="btn secondary" style="padding: 6px 12px; font-size: 11px; height: 27px;">Refresh</button>
                     </div>
                 </div>
                 
