@@ -1,0 +1,10 @@
+Regression Report: Yield Predictor
+====================================
+Target Variable: yield_kg_per_hectare
+
+    R-Squared (R2) Score:              0.9403  (94.03% Variance Explained)
+    Mean Absolute Error (MAE):         170.53  kg/hectare
+    Root Mean Squared Error (RMSE):    221.98  kg/hectare
+
+Average Dataset Yield: ~4032 kg/hectare
+Relative Accuracy Margin: ~94.5%

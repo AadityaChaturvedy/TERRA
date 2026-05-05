@@ -20,3 +20,7 @@ backend/__pycache__/
 # Project Specific (Documentation/Notes)
 *.pdf
 ereta.md
+Ml_Model.md
+STATUS.md
+model_a/data/
+model_b/data/
