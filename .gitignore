@@ -1,0 +1,22 @@
+# Python / Backend
+backend/venv/
+backend/__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.env
+
+# MacOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Project Specific (Documentation/Notes)
+*.pdf
+ereta.md

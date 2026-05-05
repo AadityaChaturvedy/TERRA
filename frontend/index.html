@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TERRA - Satellite Intelligence</title>
+    
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    
+    <!-- Turf.js -->
+    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app-container">
+        <!-- Map Container -->
+        <div id="map"></div>
+
+        <!-- Floating UI Panel -->
+        <div id="ui-panel" class="glass-panel">
+            <header>
+                <h1>TERRA</h1>
+                <p class="subtitle">Agricultural Intelligence Platform</p>
+            </header>
+
+            <div class="controls-section">
+                <h2>Region Selection</h2>
+                <p class="instruction" id="instruction-text">Click multiple points on the map to draw a field polygon. Then click "Finish Drawing" to generate the analysis grid.</p>
+                
+                <div class="status-indicator">
+                    <div class="step" id="step-1">1</div>
+                    <div class="step" id="step-2">2</div>
+                    <div class="step" id="step-3">3</div>
+                </div>
+
+                <div class="button-group">
+                    <button id="reset-btn" class="btn secondary" disabled>Reset Map</button>
+                    <button id="analyze-btn" class="btn primary" disabled>Finish Drawing</button>
+                </div>
+            </div>
+
+            <div id="results-section" class="results-section hidden">
+                <h2>Analysis Results</h2>
+                
+                <div id="loading-state" class="hidden">
+                    <div class="spinner"></div>
+                    <p>Querying Google Earth Engine...</p>
+                    <p class="small-text">Fetching Sentinel-2 data and computing indices.</p>
+                </div>
+
+                <div id="data-state" class="hidden">
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <h3>NDVI</h3>
+                            <span class="tooltip" title="Normalized Difference Vegetation Index - Measures crop vigor and health.">?</span>
+                        </div>
+                        <div class="metric-value" id="ndvi-value">--</div>
+                        <div class="metric-trend positive">Healthy Vigor</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <h3>NDWI</h3>
+                            <span class="tooltip" title="Normalized Difference Water Index - Measures plant water stress.">?</span>
+                        </div>
+                        <div class="metric-value" id="ndwi-value">--</div>
+                        <div class="metric-trend neutral">Optimal Water</div>
+                    </div>
+                    
+                    <div class="coordinates-info">
+                        <h4>Tile Coordinates</h4>
+                        <pre id="coords-display">No coordinates selected</pre>
+                    </div>
+                </div>
+                
+                <div id="error-state" class="hidden error-card">
+                    <p id="error-message">An error occurred while fetching data.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    
+    <!-- App Logic -->
+    <script src="app.js"></script>
+</body>
+</html>
